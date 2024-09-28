@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #71b7e6, #9b59b6);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .weather-app {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+        }
+
+        input, button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        button {
+            background-color: #2980b9;
+            color: white;
+            cursor: pointer;
+        }
+
+        .toggle {
+            margin-top: 15px;
+        }
+
+        .toggle label {
+            margin-right: 10px;
+        }
+
+        .weather-info, .tomorrow-info {
+            margin-top: 20px;
+        }
+
+        .weather-info p, .tomorrow-info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-app">
+        <h1>Weather App</h1>
+
+        <!-- City Search and Geolocation Button -->
+        <div class="search">
+            <input type="text" id="cityInput" placeholder="Enter city name">
+            <button id="searchBtn">Search</button>
+        </div>
+
+        <!-- Current Weather Info -->
+        <div class="weather-info">
+            <h2 id="cityName"></h2>
+            <p id="temperature"></p>
+            <p id="humidity"></p>
+            <p id="windSpeed"></p>
+        </div>
+
+        <!-- Tomorrow's Weather Info -->
+        <div class="tomorrow-info">
+            <h3>Tomorrow's Weather</h3>
+            <p id="tomorrowTemp"></p>
+            <p id="tomorrowCondition"></p>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = '1c629ffcdb73046f9f717c8889083a90'; // Replace with your OpenWeatherMap API key
+        const apiUrl = 'https://api.openweathermap.org/data/2.5/';
+
+        document.getElementById('searchBtn').addEventListener('click', fetchWeather);
+
+        function fetchWeather() {
+            const city = document.getElementById('cityInput').value;
+            const unit = 'metric'; // Default to Celsius
+            if (city) {
+                fetchWeatherData(city, unit);
+            }
+        }
+
+        function fetchWeatherData(city, unit) {
+            fetch(`${apiUrl}weather?q=${city}&units=${unit}&appid=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayWeather(data, unit);
+                    fetchFiveDayForecast(data.coord.lat, data.coord.lon, unit);
+                })
+                .catch(error => alert('City not found!'));
+        }
+
+        function displayWeather(data, unit) {
+            document.getElementById('cityName').innerText = `Weather in ${data.name}`;
+            document.getElementById('temperature').innerText = `Temperature: ${data.main.temp}°C`;
+            document.getElementById('humidity').innerText = `Humidity: ${data.main.humidity}%`;
+            document.getElementById('windSpeed').innerText = `Wind Speed: ${data.wind.speed} m/s`;
+        }
+
+        function fetchFiveDayForecast(lat, lon, unit) {
+            fetch(`${apiUrl}forecast?lat=${lat}&lon=${lon}&units=${unit}&appid=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayTomorrowWeather(data, unit);
+                })
+                .catch(error => alert('Unable to fetch forecast data!'));
+        }
+
+        function displayTomorrowWeather(data, unit) {
+            const tomorrow = data.list[8]; // The forecast data for 24 hours later
+            document.getElementById('tomorrowTemp').innerText = `Tomorrow's Temperature: ${tomorrow.main.temp}°C`;
+            document.getElementById('tomorrowCondition').innerText = `Conditions: ${tomorrow.weather[0].description}`;
+        }
+    </script>
+</body>
+</html>
