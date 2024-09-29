@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7-Day Weather App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #ebf14262, #9fd1ea);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .weather-app {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+        }
+
+        input, button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        button {
+            background-color: #2980b9;
+            color: white;
+            cursor: pointer;
+        }
+
+        .unit-toggle {
+            background-color: #27ae60;
+        }
+
+        .weather-info, .seven-day-info {
+            margin-top: 20px;
+        }
+
+        .weather-info p, .seven-day-info p {
+            margin: 5px 0;
+            font-size: 1.2em;
+        }
+
+        #weatherIcon {
+            font-size: 3em;
+        }
+
+        .loader {
+            display: none;
+            font-size: 2em;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .day {
+            margin-top: 20px;
+        }
+
+        .day h3 {
+            margin: 10px 0 5px;
+        }
+
+        .day p {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-app">
+        <h1>7-Day Weather App</h1>
+
+        <!-- City Search -->
+        <div class="search">
+            <input type="text" id="cityInput" placeholder="Enter city name">
+            <button id="searchBtn">Search</button>
+            <button id="unitToggle" class="unit-toggle">Switch to °F</button>
+        </div>
+
+        <!-- Loader -->
+        <div class="loader" id="loader">⏳ Loading...</div>
+
+        <!-- Current Weather Info -->
+        <div class="weather-info">
+            <h2 id="cityName"></h2>
+            <p id="weatherIcon"></p> <!-- Weather Emoji -->
+            <p id="temperature"></p>
+            <p id="humidity"></p>
+            <p id="windSpeed"></p>
+        </div>
+
+        <!-- 7-Day Weather Info -->
+        <div class="seven-day-info" id="sevenDayInfo">
+            <h3>7-Day Weather Forecast</h3>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        const apiKey = '1c629ffcdb73046f9f717c8889083a90'; // Replace with your OpenWeatherMap API key
+        const apiUrl = 'https://api.openweathermap.org/data/2.5/';
+        let unit = 'metric'; // Default to Celsius
+        let unitSymbol = '°C'; // Symbol for Celsius
+
+        document.getElementById('searchBtn').addEventListener('click', fetchWeather);
+        document.getElementById('unitToggle').addEventListener('click', toggleUnits);
+
+        // Function to toggle between Celsius and Fahrenheit
+        function toggleUnits() {
+            if (unit === 'metric') {
+                unit = 'imperial'; // Switch to Fahrenheit
+                unitSymbol = '°F';
+                document.getElementById('unitToggle').innerText = 'Switch to °C';
+            } else {
+                unit = 'metric'; // Switch back to Celsius
+                unitSymbol = '°C';
+                document.getElementById('unitToggle').innerText = 'Switch to °F';
+            }
+            fetchWeather();
+        }
+
+        // Function to fetch weather data
+        function fetchWeather() {
+            const city = document.getElementById('cityInput').value;
+            if (city) {
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('errorMessage').innerText = ''; // Clear previous errors
+                fetchWeatherData(city, unit);
+            } else {
+                document.getElementById('errorMessage').innerText = 'Please enter a city name.';
+            }
+        }
+
+        // Function to get current weather and 7-day forecast
+        function fetchWeatherData(city, unit) {
+            fetch(`${apiUrl}weather?q=${city}&units=${unit}&appid=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.cod === 200) {
+                        displayWeather(data, unit);
+                        fetchSevenDayForecast(data.coord.lat, data.coord.lon, unit);
+                    } else {
+                        throw new Error(data.message);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('errorMessage').innerText = error.message;
+                })
+                .finally(() => {
+                    document.getElementById('loader').style.display = 'none';
+                });
+        }
+
+        // Function to display current weather
+        function displayWeather(data, unit) {
+            document.getElementById('cityName').innerText = `Weather in ${data.name}`;
+            document.getElementById('temperature').innerText = `Temperature: ${data.main.temp}${unitSymbol}`;
+            document.getElementById('humidity').innerText = `Humidity: ${data.main.humidity}%`;
+            document.getElementById('windSpeed').innerText = `Wind Speed: ${data.wind.speed} m/s`;
+
+            // Show weather emoji based on current condition
+            const weatherCondition = data.weather[0].main;
+            document.getElementById('weatherIcon').innerHTML = getWeatherEmoji(weatherCondition);
+        }
+
+        // Function to fetch 7-day forecast using One Call API
+        function fetchSevenDayForecast(lat, lon, unit) {
+            const oneCallApiUrl = `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&units=${unit}&exclude=hourly,minutely&appid=${apiKey}`;
+            fetch(oneCallApiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    displaySevenDayWeather(data.daily, unit);
+                })
+                .catch(error => {
+                    document.getElementById('errorMessage').innerText = 'Unable to fetch forecast data!';
+                });
+        }
+
+        // Function to display 7-day weather forecast
+        function displaySevenDayWeather(dailyData, unit) {
+            const sevenDayInfo = document.getElementById('sevenDayInfo');
+            sevenDayInfo.innerHTML = ''; // Clear previous data
+
+            dailyData.forEach((day, index) => {
+                if (index < 7) { // Display only 7 days
+                    const date = new Date(day.dt * 1000);
+                    const dayDiv = document.createElement('div');
+                    dayDiv.classList.add('day');
+
+                    dayDiv.innerHTML = `
+                        <h3>${date.toDateString()}</h3>
+                        <p>${getWeatherEmoji(day.weather[0].main)}</p>
+                        <p>Temp: ${day.temp.day}${unitSymbol}</p>
+                        <p>Humidity: ${day.humidity}%</p>
+                        <p>Conditions: ${day.weather[0].description}</p>
+                    `;
+
+                    sevenDayInfo.appendChild(dayDiv);
+                }
+            });
+        }
+
+        // Function to get the appropriate weather emoji
+        function getWeatherEmoji(condition) {
+            switch (condition.toLowerCase()) {
+                case 'clear':
+                    return '☀️';
+                case 'clouds':
+                    return '☁️';
+                case 'rain':
+                    return '🌧️';
+                case 'snow':
+                    return '❄️';
+                case 'thunderstorm':
+                    return '⛈️';
+                case 'drizzle':
+                    return '🌦️';
+                case 'fog':
+                case 'mist':
+                    return '🌫️';
+                default:
+                    return '🌍'; // Default globe emoji for unrecognized conditions
+            }
+        }
+    </script>
+</body>
+</html>

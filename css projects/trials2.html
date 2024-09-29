@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App with 24-Hour Temperature Graph</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f5067562, #06a5f5);
+            color: rgb(255, 203, 14);
+            text-align: center;
+            padding: 20px;
+        }
+
+        .weather-app {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+        }
+
+        input, button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        button {
+            background-color: #2980b9;
+            color: white;
+            cursor: pointer;
+        }
+
+        .unit-toggle {
+            background-color: #27ae60;
+        }
+
+        .weather-info, .tomorrow-info {
+            margin-top: 20px;
+        }
+
+        .weather-info p, .tomorrow-info p {
+            margin: 5px 0;
+            font-size: 1.2em;
+        }
+
+        #weatherIcon {
+            font-size: 3em;
+        }
+
+        .loader {
+            display: none;
+            font-size: 2em;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+
+        /* Canvas for Chart */
+        #tempChart {
+            max-width: 100%;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-app">
+        <h1>Weather App</h1>
+
+        <!-- City Search -->
+        <div class="search">
+            <input type="text" id="cityInput" placeholder="Enter city name">
+            <button id="searchBtn">Search</button>
+            <button id="unitToggle" class="unit-toggle">Switch to °F</button>
+        </div>
+
+        <!-- Loader -->
+        <div class="loader" id="loader">⏳ Loading...</div>
+
+        <!-- Current Weather Info -->
+        <div class="weather-info">
+            <h2 id="cityName"></h2>
+            <p id="weatherIcon"></p> <!-- Weather Emoji -->
+            <p id="dateTime"></p>
+            <p id="temperature"></p>
+            <p id="humidity"></p>
+            <p id="windSpeed"></p>
+        </div>
+
+        <!-- Tomorrow's Weather Info -->
+        <div class="tomorrow-info">
+            <h3>Tomorrow's Weather</h3>
+            <p id="tomorrowIcon"></p> <!-- Tomorrow Weather Emoji -->
+            <p id="tomorrowTemp"></p>
+            <p id="tomorrowCondition"></p>
+        </div>
+
+        <!-- Temperature Graph -->
+        <canvas id="tempChart"></canvas>
+
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <!-- Add Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const apiKey = '1c629ffcdb73046f9f717c8889083a90'; // Replace with your OpenWeatherMap API key
+        const apiUrl = 'https://api.openweathermap.org/data/2.5/';
+        let unit = 'metric'; // Default to Celsius
+        let unitSymbol = '°C'; // Symbol for Celsius
+        let chart; // Variable for Chart.js instance
+
+        document.getElementById('searchBtn').addEventListener('click', fetchWeather);
+        document.getElementById('unitToggle').addEventListener('click', toggleUnits);
+
+        // Function to toggle between Celsius and Fahrenheit
+        function toggleUnits() {
+            if (unit === 'metric') {
+                unit = 'imperial'; // Switch to Fahrenheit
+                unitSymbol = '°F';
+                document.getElementById('unitToggle').innerText = 'Switch to °C';
+            } else {
+                unit = 'metric'; // Switch back to Celsius
+                unitSymbol = '°C';
+                document.getElementById('unitToggle').innerText = 'Switch to °F';
+            }
+            fetchWeather();
+        }
+
+        // Function to fetch weather data
+        function fetchWeather() {
+            const city = document.getElementById('cityInput').value;
+            if (city) {
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('errorMessage').innerText = ''; // Clear previous errors
+                fetchWeatherData(city, unit);
+            } else {
+                document.getElementById('errorMessage').innerText = 'Please enter a city name.';
+            }
+        }
+
+        // Function to get current weather data
+        function fetchWeatherData(city, unit) {
+            fetch(`${apiUrl}weather?q=${city}&units=${unit}&appid=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.cod === 200) {
+                        displayWeather(data, unit);
+                        fetchHistoricalWeather(data.coord.lat, data.coord.lon, unit);
+                    } else {
+                        throw new Error(data.message);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('errorMessage').innerText = error.message;
+                })
+                .finally(() => {
+                    document.getElementById('loader').style.display = 'none';
+                });
+        }
+
+        // Function to display current weather
+        function displayWeather(data, unit) {
+            document.getElementById('cityName').innerText = `Weather in ${data.name}`;
+            document.getElementById('temperature').innerText = `Temperature: ${data.main.temp}${unitSymbol}`;
+            document.getElementById('humidity').innerText = `Humidity: ${data.main.humidity}%`;
+            document.getElementById('windSpeed').innerText = `Wind Speed: ${data.wind.speed} m/s`;
+
+            // Show weather emoji based on current condition
+            const weatherCondition = data.weather[0].main;
+            document.getElementById('weatherIcon').innerHTML = getWeatherEmoji(weatherCondition);
+
+            // Display current date and time
+            const now = new Date();
+            document.getElementById('dateTime').innerText = `Date and Time: ${now.toLocaleString()}`;
+        }
+
+        // Function to fetch historical weather data for the last 24 hours
+        function fetchHistoricalWeather(lat, lon, unit) {
+            const now = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
+            const oneDayAgo = now - 86400; // 24 hours ago
+
+            fetch(`https://api.openweathermap.org/data/2.5/onecall/timemachine?lat=${lat}&lon=${lon}&dt=${oneDayAgo}&units=${unit}&appid=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayTemperatureGraph(data.hourly);
+                })
+                .catch(error => {
+                    document.getElementById('errorMessage').innerText = 'Unable to fetch historical data!';
+                });
+        }
+
+        // Function to display temperature graph using Chart.js
+        function displayTemperatureGraph(hourlyData) {
+            const labels = hourlyData.map(hour => {
+                const date = new Date(hour.dt * 1000);
+                return `${date.getHours()}:00`; // Display hours
+            });
+
+            const temps = hourlyData.map(hour => hour.temp);
+
+            const ctx = document.getElementById('tempChart').getContext('2d');
+
+            if (chart) {
+                chart.destroy(); // Destroy previous chart if it exists
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Temperature (${unitSymbol})`,
+                        data: temps,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        fill: true,
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to get the appropriate weather emoji
+        function getWeatherEmoji(condition) {
+            switch (condition.toLowerCase()) {
+                case 'clear':
+                    return '☀️';
+                case 'clouds':
+                    return '☁️';
+                case 'rain':
+                    return '🌧️';
+                case 'snow':
+                    return '❄️';
+                case 'thunderstorm':
+                    return '⛈️';
+                case 'drizzle':
+                    return '🌦️';
+                case 'fog':
+                case 'mist':
+                    return '🌫️';
+                default:
+                    return '🌍'; // Default globe emoji for unrecognized conditions
+            }
+        }
+    </script>
+</body>
+</html>
