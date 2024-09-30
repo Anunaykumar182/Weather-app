@@ -9,6 +9,7 @@ Dark Mode: Toggle between light and dark modes for a personalized user experienc
 Detailed Information: View additional weather metrics like Air Quality, UV Index, Sunrise, and Sunset times.
 Tomorrow's Forecast: Check the weather for the upcoming day.
 Weather Alerts: Receive alerts for extreme weather conditions.
+It is responsive for three devices laptop, tab ,and mobile.
 
 🚀 Tech Stack
 HTML5 & CSS3: For structuring and styling the app.
@@ -67,5 +68,12 @@ Some weather icons might not perfectly match the weather condition due to limita
 .
 📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+
+lists of documents and resources used pdf....
+
+
+
+
 
 
